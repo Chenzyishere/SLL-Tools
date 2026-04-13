@@ -20,7 +20,9 @@ const EMPTY_PURCHASE_MAPPING = {
 
 const DEFAULT_COST_SETTINGS = {
   baseShippingFee: 3.8,
-  monthlyWeightFee: 0
+  monthlyWeightFee: 0,
+  consumerExperienceFee: 2.4,
+  techServiceRate: 0.006
 };
 
 export function useProfitPlatform() {
@@ -30,7 +32,7 @@ export function useProfitPlatform() {
   const [salesMapping, setSalesMapping] = useState(EMPTY_SALES_MAPPING);
   const [purchaseMapping, setPurchaseMapping] = useState(EMPTY_PURCHASE_MAPPING);
   const [costSettings, setCostSettings] = useState(DEFAULT_COST_SETTINGS);
-  const [refundOverrides, setRefundOverrides] = useState({});
+  const [orderRefundOverrides, setOrderRefundOverrides] = useState({});
   const [error, setError] = useState('');
 
   async function handleSalesUpload(file) {
@@ -40,7 +42,7 @@ export function useProfitPlatform() {
       const columns = rows[0] ? Object.keys(rows[0]) : [];
       setSalesRows(rows);
       setSalesMapping(buildSalesMapping(columns));
-      setRefundOverrides({});
+      setOrderRefundOverrides({});
     } catch (err) {
       setError(`销售表解析失败：${err.message || err}`);
     }
@@ -58,20 +60,20 @@ export function useProfitPlatform() {
     }
   }
 
-  function updateRefundOverride(lineKey, rawValue) {
-    setRefundOverrides((prev) => {
+  function updateOrderRefundOverride(orderId, rawValue) {
+    setOrderRefundOverrides((prev) => {
       const next = { ...prev };
       const text = String(rawValue ?? '').trim();
 
       if (!text) {
-        delete next[lineKey];
+        delete next[orderId];
         return next;
       }
 
       const numeric = Number(text);
       if (Number.isNaN(numeric) || numeric < 0) return prev;
 
-      next[lineKey] = numeric;
+      next[orderId] = numeric;
       return next;
     });
   }
@@ -85,9 +87,9 @@ export function useProfitPlatform() {
         purchaseMapping,
         month,
         costSettings,
-        refundOverrides
+        orderRefundOverrides
       ),
-    [salesRows, purchaseRows, salesMapping, purchaseMapping, month, costSettings, refundOverrides]
+    [salesRows, purchaseRows, salesMapping, purchaseMapping, month, costSettings, orderRefundOverrides]
   );
 
   return {
@@ -101,7 +103,7 @@ export function useProfitPlatform() {
     setPurchaseMapping,
     costSettings,
     setCostSettings,
-    updateRefundOverride,
+    updateOrderRefundOverride,
     error,
     handleSalesUpload,
     handlePurchaseUpload,

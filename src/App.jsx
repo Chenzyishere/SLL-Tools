@@ -17,7 +17,7 @@ export default function App() {
     setPurchaseMapping,
     costSettings,
     setCostSettings,
-    updateRefundOverride,
+    updateOrderRefundOverride,
     error,
     handleSalesUpload,
     handlePurchaseUpload,
@@ -63,7 +63,7 @@ export default function App() {
       <RulePanel costSettings={costSettings} setCostSettings={setCostSettings} />
 
       <StatsPanel stats={stats} />
-      <MatchDetailsPanel stats={stats} updateRefundOverride={updateRefundOverride} />
+      <MatchDetailsPanel stats={stats} updateOrderRefundOverride={updateOrderRefundOverride} />
 
       {error && <div className="error">{error}</div>}
     </main>

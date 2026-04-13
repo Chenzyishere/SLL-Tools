@@ -13,7 +13,7 @@ export default function StatsPanel({ stats }) {
         <span>本月总成本</span>
         <strong>¥ {formatMoney(stats.cost)}</strong>
         <small>
-          商品成本 {formatMoney(stats.productCost)} + 运费 {formatMoney(stats.shippingCost)} + 增重费 {formatMoney(stats.weightFee)}
+          商品 {formatMoney(stats.productCost)} + 运费 {formatMoney(stats.shippingCost)} + 体验费 {formatMoney(stats.experienceFeeTotal || 0)} + 服务费 {formatMoney(stats.techServiceFeeTotal || 0)} + 增重费 {formatMoney(stats.weightFee)}
         </small>
       </div>
 
@@ -24,9 +24,9 @@ export default function StatsPanel({ stats }) {
       </div>
 
       <div className="result-item">
-        <span>退款核对</span>
-        <strong>{stats.refundReviewCount} 单</strong>
-        <small>退款金额合计 ¥ {formatMoney(stats.refundReviewTotal || 0)}</small>
+        <span>手工退款</span>
+        <strong>{stats.orderRefundEditedCount || 0} 单</strong>
+        <small>退款金额合计 ¥ {formatMoney(stats.refundTotal || 0)}</small>
       </div>
     </section>
   );

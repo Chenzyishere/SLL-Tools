@@ -9,7 +9,6 @@ function pickProductName(row) {
       return String(value).trim();
     }
   }
-
   return '';
 }
 
@@ -41,15 +40,14 @@ function classifyStatus(statusText) {
   const isPending = isShipped && text.includes('待收货');
 
   const invalid = isCanceled || (isRefundSuccess && !isReceived && !isShipped);
-  const needRefundCheck = isRefundSuccess && (isReceived || isShipped);
   const shippingEligible = isReceived || (isShipped && isRefundSuccess);
 
   return {
     normalized: text,
     invalid,
     pending: isPending,
-    needRefundCheck,
-    shippingEligible
+    shippingEligible,
+    receivedEligible: isReceived
   };
 }
 
@@ -60,53 +58,25 @@ function getOrderKey(row, orderIdColumn, fallbackIndex) {
   return `ROW-${fallbackIndex + 1}`;
 }
 
-function getEffectiveRefundAmount(sourceRefundAmount, overrideValue) {
-  if (overrideValue === '' || overrideValue === null || overrideValue === undefined) {
-    return sourceRefundAmount;
-  }
-
-  const override = Number(overrideValue);
-  if (Number.isNaN(override) || override < 0) return sourceRefundAmount;
-
-  return override;
-}
-
-function buildRefundReviewItem({
-  lineKey,
-  orderId,
-  status,
-  amount,
-  sourceRefundAmount,
-  refundAmount,
-  isManual
-}) {
-  return {
-    lineKey,
-    orderId,
-    status,
-    amount,
-    sourceRefundAmount,
-    refundAmount,
-    netAmount: amount - refundAmount,
-    isManual
-  };
-}
-
-function createOrderSummary(orderId) {
+function createOrderSummary(orderId, firstSeenIndex) {
   return {
     orderId,
+    firstSeenIndex,
     statuses: new Set(),
     effectiveLineCount: 0,
     pendingLineCount: 0,
     invalidLineCount: 0,
+    grossRevenue: 0,
+    refundAmount: 0,
     netRevenue: 0,
-    refundReviewNetRevenue: 0,
-    refundReviewLineCount: 0,
     productCost: 0,
     shippingCost: 0,
+    experienceFee: 0,
+    techServiceFee: 0,
     pendingAmount: 0,
     invalidAmount: 0,
-    shippingEligible: false
+    shippingEligible: false,
+    receivedEligible: false
   };
 }
 
@@ -131,21 +101,25 @@ function toOrderProfitRows(orderMap) {
         orderId: order.orderId,
         category,
         statuses: Array.from(order.statuses).filter(Boolean).join(' | ') || '-',
+        grossRevenue: order.grossRevenue,
+        refundAmount: order.refundAmount,
         netRevenue: order.netRevenue,
-        refundReviewNetRevenue: order.refundReviewNetRevenue,
-        refundReviewLineCount: order.refundReviewLineCount,
         productCost: order.productCost,
         shippingCost: order.shippingCost,
-        profit: order.netRevenue - order.productCost - order.shippingCost,
-        note
+        experienceFee: order.experienceFee,
+        techServiceFee: order.techServiceFee,
+        profit: order.netRevenue - order.productCost - order.shippingCost - order.experienceFee - order.techServiceFee,
+        note,
+        editableRefund: order.effectiveLineCount > 0,
+        firstSeenIndex: order.firstSeenIndex
       };
     })
     .sort((a, b) => {
       if (a.category !== b.category) {
-        const rank = { 已入账: 0, 待入账: 1, 无效: 2, '待入账/无效': 3 };
+        const rank = { '已入账': 0, '待入账': 1, 无效: 2, '待入账/无效': 3 };
         return (rank[a.category] ?? 9) - (rank[b.category] ?? 9);
       }
-      return b.netRevenue - a.netRevenue;
+      return a.firstSeenIndex - b.firstSeenIndex;
     });
 }
 
@@ -155,9 +129,7 @@ function toPendingOrderRows(orderMap) {
     .map((order) => {
       let note = '';
       if (order.effectiveLineCount > 0) note = '含已入账明细，待入账部分未计入利润';
-      if (order.invalidLineCount > 0) {
-        note = note ? `${note}；同时含无效明细` : '同时含无效明细';
-      }
+      if (order.invalidLineCount > 0) note = note ? `${note}；同时含无效明细` : '同时含无效明细';
 
       return {
         orderId: order.orderId,
@@ -177,7 +149,7 @@ export function calcProfitByPurchasePrice(
   purchaseMapping,
   yearMonth,
   costSettings,
-  refundOverrides
+  orderRefundOverrides
 ) {
   if (!yearMonth) {
     return {
@@ -187,6 +159,8 @@ export function calcProfitByPurchasePrice(
       cost: 0,
       productCost: 0,
       shippingCost: 0,
+      experienceFeeTotal: 0,
+      techServiceFeeTotal: 0,
       shippingOrderCount: 0,
       weightFee: 0,
       profit: 0,
@@ -201,9 +175,9 @@ export function calcProfitByPurchasePrice(
       filteredByStatus: 0,
       matchedProducts: [],
       unmatchedProducts: [],
-      refundReviewOrders: [],
       orderProfitRows: [],
-      pendingOrderRows: []
+      pendingOrderRows: [],
+      orderRefundEditedCount: 0
     };
   }
 
@@ -213,7 +187,6 @@ export function calcProfitByPurchasePrice(
   for (const row of purchaseRows) {
     const sku = normalizeKey(row[purchaseMapping.skuColumn]);
     const price = toNumber(row[purchaseMapping.priceColumn]);
-
     if (!sku || Number.isNaN(price)) continue;
     if (!purchaseMap.has(sku)) purchaseMap.set(sku, price);
   }
@@ -230,27 +203,26 @@ export function calcProfitByPurchasePrice(
 
   const matchedMap = new Map();
   const unmatchedMap = new Map();
-  const refundReviewOrders = [];
   const orderMap = new Map();
 
   const baseShippingFee = Number(costSettings?.baseShippingFee) || 0;
   const weightFee = Number(costSettings?.monthlyWeightFee) || 0;
+  const consumerExperienceFee = Number(costSettings?.consumerExperienceFee) || 0;
+  const techServiceRate = Number(costSettings?.techServiceRate) || 0;
 
   for (let index = 0; index < salesRows.length; index += 1) {
     const row = salesRows[index];
 
     const date = parseDate(row[salesMapping.dateColumn]);
     const amount = toNumber(row[salesMapping.amountColumn]);
-
     if (!date || Number.isNaN(amount)) continue;
     if (date.getFullYear() !== year || date.getMonth() + 1 !== month) continue;
 
     const statusInfo = classifyStatus(row[salesMapping.statusColumn]);
     const orderKey = getOrderKey(row, salesMapping.orderIdColumn, index);
-    const lineKey = `${orderKey}__${index}`;
 
     if (!orderMap.has(orderKey)) {
-      orderMap.set(orderKey, createOrderSummary(orderKey));
+      orderMap.set(orderKey, createOrderSummary(orderKey, index));
     }
     const order = orderMap.get(orderKey);
     order.statuses.add(statusInfo.normalized);
@@ -272,35 +244,9 @@ export function calcProfitByPurchasePrice(
 
     salesCount += 1;
     grossRevenue += amount;
+
     order.effectiveLineCount += 1;
-
-    const sourceRefundAmount = 0;
-    const overrideValue = refundOverrides?.[lineKey];
-    const refundAmount = getEffectiveRefundAmount(sourceRefundAmount, overrideValue);
-    const isManual = overrideValue !== undefined && overrideValue !== null && overrideValue !== '';
-
-    if (statusInfo.needRefundCheck) {
-      refundReviewOrders.push(
-        buildRefundReviewItem({
-          lineKey,
-          orderId: orderKey,
-          status: statusInfo.normalized,
-          amount,
-          sourceRefundAmount,
-          refundAmount,
-          isManual
-        })
-      );
-    }
-
-    const netAmount = amount - refundAmount;
-    revenue += netAmount;
-    order.netRevenue += netAmount;
-
-    if (statusInfo.needRefundCheck) {
-      order.refundReviewNetRevenue += netAmount;
-      order.refundReviewLineCount += 1;
-    }
+    order.grossRevenue += amount;
 
     const rawSku = row[salesMapping.skuColumn];
     const sku = normalizeKey(rawSku);
@@ -312,9 +258,8 @@ export function calcProfitByPurchasePrice(
     const name = pickProductName(row);
     const purchasePrice = purchaseMap.get(sku);
 
-    if (statusInfo.shippingEligible) {
-      order.shippingEligible = true;
-    }
+    if (statusInfo.shippingEligible) order.shippingEligible = true;
+    if (statusInfo.receivedEligible) order.receivedEligible = true;
 
     if (!sku || purchasePrice === undefined || Number.isNaN(purchasePrice)) {
       unmatchedCount += 1;
@@ -333,7 +278,7 @@ export function calcProfitByPurchasePrice(
       const item = unmatchedMap.get(unmatchedKey);
       item.orderCount += 1;
       item.totalQty += qty;
-      item.totalRevenue += netAmount;
+      item.totalRevenue += amount;
       continue;
     }
 
@@ -357,12 +302,16 @@ export function calcProfitByPurchasePrice(
     const item = matchedMap.get(sku);
     item.orderCount += 1;
     item.totalQty += qty;
-    item.totalRevenue += netAmount;
+    item.totalRevenue += amount;
     item.totalCost += lineCost;
   }
 
   let shippingOrderCount = 0;
   let shippingCost = 0;
+  let refundTotal = 0;
+  let orderRefundEditedCount = 0;
+  let experienceFeeTotal = 0;
+  let techServiceFeeTotal = 0;
 
   for (const order of orderMap.values()) {
     if (order.effectiveLineCount > 0 && order.shippingEligible) {
@@ -370,17 +319,40 @@ export function calcProfitByPurchasePrice(
       shippingOrderCount += 1;
       shippingCost += baseShippingFee;
     }
+
+    const overrideRaw = orderRefundOverrides?.[order.orderId];
+    const override = Number(overrideRaw);
+    order.refundAmount = !Number.isNaN(override) && override > 0 ? override : 0;
+
+    if (order.effectiveLineCount > 0) {
+      order.netRevenue = order.grossRevenue - order.refundAmount;
+      revenue += order.netRevenue;
+      refundTotal += order.refundAmount;
+      if (order.refundAmount > 0) orderRefundEditedCount += 1;
+
+      if (order.receivedEligible) {
+        order.experienceFee = consumerExperienceFee;
+        order.techServiceFee = order.netRevenue * techServiceRate;
+        experienceFeeTotal += order.experienceFee;
+        techServiceFeeTotal += order.techServiceFee;
+      }
+    } else {
+      order.netRevenue = 0;
+      order.refundAmount = 0;
+    }
   }
 
-  const cost = productCost + shippingCost + weightFee;
+  const cost = productCost + shippingCost + experienceFeeTotal + techServiceFeeTotal + weightFee;
 
   return {
     revenue,
     grossRevenue,
-    refundTotal: refundReviewOrders.reduce((sum, item) => sum + item.refundAmount, 0),
+    refundTotal,
     cost,
     productCost,
     shippingCost,
+    experienceFeeTotal,
+    techServiceFeeTotal,
     shippingOrderCount,
     weightFee,
     profit: revenue - cost,
@@ -390,13 +362,13 @@ export function calcProfitByPurchasePrice(
     invalidCount,
     pendingCount,
     pendingAmount,
-    refundReviewCount: refundReviewOrders.length,
-    refundReviewTotal: refundReviewOrders.reduce((sum, item) => sum + item.refundAmount, 0),
+    refundReviewCount: orderRefundEditedCount,
+    refundReviewTotal: refundTotal,
     filteredByStatus: invalidCount,
     matchedProducts: toList(matchedMap, { includeCost: true }),
     unmatchedProducts: toList(unmatchedMap, { includeCost: false }),
-    refundReviewOrders,
     orderProfitRows: toOrderProfitRows(orderMap),
-    pendingOrderRows: toPendingOrderRows(orderMap)
+    pendingOrderRows: toPendingOrderRows(orderMap),
+    orderRefundEditedCount
   };
 }
