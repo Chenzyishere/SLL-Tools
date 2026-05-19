@@ -359,6 +359,24 @@ export function calcProfitByPurchasePrice(
   for (const order of orderMap.values()) {
     if (order.effectiveLineCount > 0 && orderReturnOverrides[order.orderId]) {
       returnOrderCount += 1;
+
+      revenue -= order.netRevenue;
+      productCost -= order.productCost;
+      if (order.shippingCost > 0) {
+        shippingCost -= order.shippingCost;
+        shippingOrderCount -= 1;
+      }
+      experienceFeeTotal -= order.experienceFee || 0;
+      techServiceFeeTotal -= order.techServiceFee || 0;
+      refundTotal -= order.refundAmount || 0;
+      salesCount -= order.effectiveLineCount;
+
+      order.netRevenue = 0;
+      order.productCost = 0;
+      order.shippingCost = 0;
+      order.experienceFee = 0;
+      order.techServiceFee = 0;
+      order.refundAmount = 0;
       order.returnShippingFee = RETURN_SHIPPING_FEE;
       returnShippingCost += RETURN_SHIPPING_FEE;
     }

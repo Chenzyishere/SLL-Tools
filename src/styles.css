@@ -996,6 +996,34 @@ input[type='number']:focus {
   font-size: 13px;
 }
 
+/* ── Copy Button ── */
+.copy-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: 6px 14px;
+  background: var(--color-surface);
+  color: var(--color-text-secondary);
+  font-size: 12px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease-out);
+  white-space: nowrap;
+}
+
+.copy-btn:hover {
+  border-color: var(--color-primary-light);
+  color: var(--color-primary);
+  background: var(--color-primary-bg);
+}
+
+.copy-btn:active {
+  transform: scale(0.97);
+}
+
 /* ── Status Chips ── */
 .status-category {
   display: inline-flex;
