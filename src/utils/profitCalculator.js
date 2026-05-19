@@ -108,9 +108,11 @@ function toOrderProfitRows(orderMap) {
         shippingCost: order.shippingCost,
         experienceFee: order.experienceFee,
         techServiceFee: order.techServiceFee,
-        profit: order.netRevenue - order.productCost - order.shippingCost - order.experienceFee - order.techServiceFee,
+        profit: order.netRevenue - order.productCost - order.shippingCost - order.experienceFee - order.techServiceFee - (order.returnShippingFee || 0),
         note,
         editableRefund: order.effectiveLineCount > 0,
+        isReturn: order.returnShippingFee > 0,
+        returnShippingFee: order.returnShippingFee || 0,
         firstSeenIndex: order.firstSeenIndex
       };
     })
@@ -149,7 +151,8 @@ export function calcProfitByPurchasePrice(
   purchaseMapping,
   yearMonth,
   costSettings,
-  orderRefundOverrides
+  orderRefundOverrides,
+  orderReturnOverrides = {}
 ) {
   if (!yearMonth) {
     return {
@@ -163,6 +166,9 @@ export function calcProfitByPurchasePrice(
       techServiceFeeTotal: 0,
       shippingOrderCount: 0,
       weightFee: 0,
+      warehouseFeeTotal: 0,
+      inboundWarehouseShippingFee: 0,
+      outboundWarehouseShippingFee: 0,
       profit: 0,
       salesCount: 0,
       matchedCount: 0,
@@ -172,6 +178,8 @@ export function calcProfitByPurchasePrice(
       pendingAmount: 0,
       refundReviewCount: 0,
       refundReviewTotal: 0,
+      returnOrderCount: 0,
+      returnShippingCost: 0,
       filteredByStatus: 0,
       matchedProducts: [],
       unmatchedProducts: [],
@@ -209,6 +217,8 @@ export function calcProfitByPurchasePrice(
   const weightFee = Number(costSettings?.monthlyWeightFee) || 0;
   const consumerExperienceFee = Number(costSettings?.consumerExperienceFee) || 0;
   const techServiceRate = Number(costSettings?.techServiceRate) || 0;
+  const inboundWarehouseShippingFee = Number(costSettings?.inboundWarehouseShippingFee) || 0;
+  const outboundWarehouseShippingFee = Number(costSettings?.outboundWarehouseShippingFee) || 0;
 
   for (let index = 0; index < salesRows.length; index += 1) {
     const row = salesRows[index];
@@ -342,7 +352,20 @@ export function calcProfitByPurchasePrice(
     }
   }
 
-  const cost = productCost + shippingCost + experienceFeeTotal + techServiceFeeTotal + weightFee;
+  const RETURN_SHIPPING_FEE = 3.8;
+  let returnOrderCount = 0;
+  let returnShippingCost = 0;
+
+  for (const order of orderMap.values()) {
+    if (order.effectiveLineCount > 0 && orderReturnOverrides[order.orderId]) {
+      returnOrderCount += 1;
+      order.returnShippingFee = RETURN_SHIPPING_FEE;
+      returnShippingCost += RETURN_SHIPPING_FEE;
+    }
+  }
+
+  const warehouseFeeTotal = inboundWarehouseShippingFee + outboundWarehouseShippingFee;
+  const cost = productCost + shippingCost + experienceFeeTotal + techServiceFeeTotal + weightFee + warehouseFeeTotal + returnShippingCost;
 
   return {
     revenue,
@@ -355,6 +378,9 @@ export function calcProfitByPurchasePrice(
     techServiceFeeTotal,
     shippingOrderCount,
     weightFee,
+    warehouseFeeTotal,
+    inboundWarehouseShippingFee,
+    outboundWarehouseShippingFee,
     profit: revenue - cost,
     salesCount,
     matchedCount,
@@ -364,6 +390,8 @@ export function calcProfitByPurchasePrice(
     pendingAmount,
     refundReviewCount: orderRefundEditedCount,
     refundReviewTotal: refundTotal,
+    returnOrderCount,
+    returnShippingCost,
     filteredByStatus: invalidCount,
     matchedProducts: toList(matchedMap, { includeCost: true }),
     unmatchedProducts: toList(unmatchedMap, { includeCost: false }),
