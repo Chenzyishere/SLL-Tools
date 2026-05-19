@@ -1,5 +1,6 @@
-﻿import { useState } from 'react';
+﻿import { useRef, useState } from 'react';
 import { formatMoney } from '../utils/format';
+import { parseFile } from '../utils/fileParser';
 import CollapsibleSection from './CollapsibleSection';
 
 function ProductList({ title, products, matched }) {
@@ -122,11 +123,25 @@ function StatusChips({ statusesText }) {
   );
 }
 
+const AFTER_SALES_ORDER_ID_KEYS = ['订单号', '订单编号', 'orderId', 'order_id'];
+const AFTER_SALES_TYPE_KEYS = ['退款类型', '售后类型', '售后状态', '售后', '类型'];
+
+function pickColumn(columns, keywords) {
+  for (const key of keywords) {
+    const found = columns.find((c) => String(c || '').trim().includes(key));
+    if (found) return found;
+  }
+  return '';
+}
+
 function RefundOrderCard({ rows, updateOrderRefundOverride, updateOrderReturnOverride }) {
   const totalRefund = rows.reduce((sum, r) => sum + (r.refundAmount || 0), 0);
   const totalRevenue = rows.reduce((sum, r) => sum + (r.grossRevenue || 0), 0);
   const returnCount = rows.filter((r) => r.isReturn).length;
   const [copied, setCopied] = useState(false);
+  const [afterSalesMap, setAfterSalesMap] = useState({});
+  const [importing, setImporting] = useState(false);
+  const appliedRef = useRef(null);
 
   function handleCopyOrderIds() {
     const ids = rows.map((r) => r.orderId).join(',');
@@ -134,6 +149,45 @@ function RefundOrderCard({ rows, updateOrderRefundOverride, updateOrderReturnOve
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
     });
+  }
+
+  async function handleImportAfterSales(file) {
+    try {
+      setImporting(true);
+      const parsedRows = await parseFile(file);
+      const columns = parsedRows[0] ? Object.keys(parsedRows[0]) : [];
+      const idCol = pickColumn(columns, AFTER_SALES_ORDER_ID_KEYS);
+      const typeCol = pickColumn(columns, AFTER_SALES_TYPE_KEYS);
+
+      if (!idCol) throw new Error('未识别到订单号列');
+      if (!typeCol) throw new Error('未识别到退款类型列');
+
+      const map = {};
+      for (const row of parsedRows) {
+        const orderId = String(row[idCol] ?? '').trim();
+        const afterType = String(row[typeCol] ?? '').trim();
+        if (orderId && afterType) {
+          map[orderId] = afterType;
+        }
+      }
+
+      setAfterSalesMap(map);
+
+      // Auto-apply: "退货退款" → auto check 是否退货
+      const currentRows = rows;
+      for (const r of currentRows) {
+        const afterType = map[r.orderId];
+        if (afterType && afterType.includes('退货退款')) {
+          updateOrderReturnOverride(r.orderId, true);
+        }
+      }
+
+      appliedRef.current = file.name + Date.now();
+    } catch (err) {
+      alert(`导入失败：${err.message || err}`);
+    } finally {
+      setImporting(false);
+    }
   }
 
   return (
@@ -144,11 +198,25 @@ function RefundOrderCard({ rows, updateOrderRefundOverride, updateOrderReturnOve
           共 {rows.length} 单 · 订单收入合计 ¥{formatMoney(totalRevenue)} · 退款合计 ¥{formatMoney(totalRefund)}
           {returnCount > 0 && ` · 退货 ${returnCount} 单（每单 -¥3.80）`}
         </span>
-        {rows.length > 0 && (
-          <button type="button" className="copy-btn" onClick={handleCopyOrderIds}>
-            {copied ? '已复制' : '复制订单号'}
-          </button>
-        )}
+        <div className="refund-actions">
+          <label className="import-btn">
+            {importing ? '导入中...' : '导入售后表'}
+            <input
+              type="file"
+              accept=".csv,.xlsx,.xls"
+              style={{ display: 'none' }}
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) handleImportAfterSales(file);
+              }}
+            />
+          </label>
+          {rows.length > 0 && (
+            <button type="button" className="copy-btn" onClick={handleCopyOrderIds}>
+              {copied ? '已复制' : '复制订单号'}
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="list-table-wrap">
@@ -157,6 +225,7 @@ function RefundOrderCard({ rows, updateOrderRefundOverride, updateOrderReturnOve
             <tr>
               <th>订单号</th>
               <th>状态</th>
+              <th>退款类型</th>
               <th>订单收入</th>
               <th className="refund-col-header">退款金额</th>
               <th>是否退货</th>
@@ -170,50 +239,69 @@ function RefundOrderCard({ rows, updateOrderRefundOverride, updateOrderReturnOve
             </tr>
           </thead>
           <tbody>
-            {rows.map((item) => (
-              <tr key={`refund-${item.orderId}`}>
-                <td>{item.orderId}</td>
-                <td>
-                  <StatusChips statusesText={item.statuses} />
-                </td>
-                <td>¥ {formatMoney(item.grossRevenue || 0)}</td>
-                <td>
-                  <input
-                    className="refund-input refund-input-prominent"
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    value={item.refundAmount || 0}
-                    onChange={(e) => updateOrderRefundOverride(item.orderId, e.target.value)}
-                  />
-                </td>
-                <td className="return-check-cell">
-                  <label className="return-check-label">
+            {rows.map((item) => {
+              const afterType = afterSalesMap[item.orderId] || '';
+              const isReturnType = afterType.includes('退货退款');
+              const isRefundOnly = !isReturnType && afterType.includes('退款');
+              let chipClass = '';
+              let rowClass = '';
+              if (isReturnType) chipClass = 'after-return';
+              else if (isRefundOnly) { chipClass = 'after-refund'; rowClass = 'row-refund'; }
+              else if (afterType) chipClass = 'after-other';
+              return (
+                <tr key={`refund-${item.orderId}`} className={rowClass || undefined}>
+                  <td>{item.orderId}</td>
+                  <td>
+                    <StatusChips statusesText={item.statuses} />
+                  </td>
+                  <td>
+                    {afterType ? (
+                      <span className={`after-sales-chip ${chipClass}`}>
+                        {afterType}
+                      </span>
+                    ) : (
+                      <span className="after-sales-none">-</span>
+                    )}
+                  </td>
+                  <td>¥ {formatMoney(item.grossRevenue || 0)}</td>
+                  <td>
                     <input
-                      type="checkbox"
-                      className="return-checkbox"
-                      checked={item.isReturn || false}
-                      onChange={(e) => updateOrderReturnOverride(item.orderId, e.target.checked)}
+                      className="refund-input refund-input-prominent"
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={item.refundAmount || 0}
+                      onChange={(e) => updateOrderRefundOverride(item.orderId, e.target.value)}
                     />
-                    <span className="return-check-text">{item.isReturn ? '是' : '否'}</span>
-                  </label>
-                </td>
-                <td>¥ {formatMoney(item.netRevenue || 0)}</td>
-                <td>¥ {formatMoney(item.productCost || 0)}</td>
-                <td>¥ {formatMoney(item.shippingCost || 0)}</td>
-                <td>¥ {formatMoney(item.experienceFee || 0)}</td>
-                <td>¥ {formatMoney(item.techServiceFee || 0)}</td>
-                <td className="return-fee-cell">
-                  {item.isReturn ? <span className="return-fee-value">-¥3.80</span> : '-'}
-                </td>
-                <td className={item.profit >= 0 ? 'profit-positive' : 'profit-negative'}>
-                  ¥ {formatMoney(item.profit || 0)}
-                </td>
-              </tr>
-            ))}
+                  </td>
+                  <td className="return-check-cell">
+                    <label className="return-check-label">
+                      <input
+                        type="checkbox"
+                        className="return-checkbox"
+                        checked={item.isReturn || false}
+                        onChange={(e) => updateOrderReturnOverride(item.orderId, e.target.checked)}
+                      />
+                      <span className="return-check-text">{item.isReturn ? '是' : '否'}</span>
+                    </label>
+                  </td>
+                  <td>¥ {formatMoney(item.netRevenue || 0)}</td>
+                  <td>¥ {formatMoney(item.productCost || 0)}</td>
+                  <td>¥ {formatMoney(item.shippingCost || 0)}</td>
+                  <td>¥ {formatMoney(item.experienceFee || 0)}</td>
+                  <td>¥ {formatMoney(item.techServiceFee || 0)}</td>
+                  <td className="return-fee-cell">
+                    {item.isReturn ? <span className="return-fee-value">-¥3.80</span> : '-'}
+                  </td>
+                  <td className={item.profit >= 0 ? 'profit-positive' : 'profit-negative'}>
+                    ¥ {formatMoney(item.profit || 0)}
+                  </td>
+                </tr>
+              );
+            })}
             {rows.length === 0 && (
               <tr>
-                <td colSpan={12} className="empty-row">
+                <td colSpan={13} className="empty-row">
                   暂无退款订单
                 </td>
               </tr>
