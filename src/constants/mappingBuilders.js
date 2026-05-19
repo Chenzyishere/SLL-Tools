@@ -8,22 +8,8 @@
   SALE_SKU_KEYS,
   SALE_STATUS_KEYS
 } from './columnHints';
+import { DEFAULT_PLATFORM_ID, PLATFORM_PRESETS } from './platformPresets';
 import { pickColumn, pickOptionalColumn } from '../utils/fileParser';
-
-const PREFERRED = {
-  sales: {
-    dateColumn: ['订单成交时间'],
-    amountColumn: ['商家实收金额(元)', '商家实收金额（元）', '商家实收金额'],
-    qtyColumn: ['商品数量(件)', '商品数量（件）', '商品数量'],
-    skuColumn: ['商品'],
-    statusColumn: ['订单状态'],
-    orderIdColumn: ['订单号']
-  },
-  purchase: {
-    skuColumn: ['商品'],
-    priceColumn: ['进货价']
-  }
-};
 
 function normalizeHeader(value) {
   return String(value ?? '').replace(/\s/g, '').trim();
@@ -44,20 +30,28 @@ function pickWithPreferred(columns, preferredNames, keywords, optional = false) 
   return optional ? pickOptionalColumn(columns, keywords) : pickColumn(columns, keywords);
 }
 
-export function buildSalesMapping(columns) {
+function getPreset(platformId) {
+  return PLATFORM_PRESETS[platformId] || PLATFORM_PRESETS[DEFAULT_PLATFORM_ID];
+}
+
+export function buildSalesMapping(columns, platformId = DEFAULT_PLATFORM_ID) {
+  const preferred = getPreset(platformId).sales;
+
   return {
-    dateColumn: pickWithPreferred(columns, PREFERRED.sales.dateColumn, SALE_DATE_KEYS),
-    amountColumn: pickWithPreferred(columns, PREFERRED.sales.amountColumn, SALE_AMOUNT_KEYS),
-    qtyColumn: pickWithPreferred(columns, PREFERRED.sales.qtyColumn, SALE_QTY_KEYS),
-    skuColumn: pickWithPreferred(columns, PREFERRED.sales.skuColumn, SALE_SKU_KEYS),
-    statusColumn: pickWithPreferred(columns, PREFERRED.sales.statusColumn, SALE_STATUS_KEYS, true),
-    orderIdColumn: pickWithPreferred(columns, PREFERRED.sales.orderIdColumn, SALE_ORDER_ID_KEYS, true)
+    dateColumn: pickWithPreferred(columns, preferred.dateColumn, SALE_DATE_KEYS),
+    amountColumn: pickWithPreferred(columns, preferred.amountColumn, SALE_AMOUNT_KEYS),
+    qtyColumn: pickWithPreferred(columns, preferred.qtyColumn, SALE_QTY_KEYS),
+    skuColumn: pickWithPreferred(columns, preferred.skuColumn, SALE_SKU_KEYS),
+    statusColumn: pickWithPreferred(columns, preferred.statusColumn, SALE_STATUS_KEYS, true),
+    orderIdColumn: pickWithPreferred(columns, preferred.orderIdColumn, SALE_ORDER_ID_KEYS, true)
   };
 }
 
-export function buildPurchaseMapping(columns) {
+export function buildPurchaseMapping(columns, platformId = DEFAULT_PLATFORM_ID) {
+  const preferred = getPreset(platformId).purchase;
+
   return {
-    skuColumn: pickWithPreferred(columns, PREFERRED.purchase.skuColumn, PURCHASE_SKU_KEYS),
-    priceColumn: pickWithPreferred(columns, PREFERRED.purchase.priceColumn, PURCHASE_PRICE_KEYS)
+    skuColumn: pickWithPreferred(columns, preferred.skuColumn, PURCHASE_SKU_KEYS),
+    priceColumn: pickWithPreferred(columns, preferred.priceColumn, PURCHASE_PRICE_KEYS)
   };
 }
