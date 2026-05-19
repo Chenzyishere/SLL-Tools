@@ -115,6 +115,27 @@ header p {
   font-weight: 400;
 }
 
+.clear-data-btn {
+  display: inline-block;
+  margin-left: 14px;
+  border: 1px solid #fca5a5;
+  border-radius: var(--radius-sm);
+  padding: 4px 14px;
+  background: #fef2f2;
+  color: #dc2626;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease-out);
+  vertical-align: middle;
+}
+
+.clear-data-btn:hover {
+  background: #fee2e2;
+  border-color: #dc2626;
+}
+
 /* ── Platform Tabs ── */
 .platform-tabs {
   display: grid;
