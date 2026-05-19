@@ -1,4 +1,5 @@
-﻿import { formatMoney } from '../utils/format';
+﻿import { useState } from 'react';
+import { formatMoney } from '../utils/format';
 import CollapsibleSection from './CollapsibleSection';
 
 function ProductList({ title, products, matched }) {
@@ -125,6 +126,15 @@ function RefundOrderCard({ rows, updateOrderRefundOverride, updateOrderReturnOve
   const totalRefund = rows.reduce((sum, r) => sum + (r.refundAmount || 0), 0);
   const totalRevenue = rows.reduce((sum, r) => sum + (r.grossRevenue || 0), 0);
   const returnCount = rows.filter((r) => r.isReturn).length;
+  const [copied, setCopied] = useState(false);
+
+  function handleCopyOrderIds() {
+    const ids = rows.map((r) => r.orderId).join(',');
+    navigator.clipboard.writeText(ids).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    });
+  }
 
   return (
     <section className="panel list-panel full-width refund-card">
@@ -134,6 +144,11 @@ function RefundOrderCard({ rows, updateOrderRefundOverride, updateOrderReturnOve
           共 {rows.length} 单 · 订单收入合计 ¥{formatMoney(totalRevenue)} · 退款合计 ¥{formatMoney(totalRefund)}
           {returnCount > 0 && ` · 退货 ${returnCount} 单（每单 -¥3.80）`}
         </span>
+        {rows.length > 0 && (
+          <button type="button" className="copy-btn" onClick={handleCopyOrderIds}>
+            {copied ? '已复制' : '复制订单号'}
+          </button>
+        )}
       </div>
 
       <div className="list-table-wrap">
