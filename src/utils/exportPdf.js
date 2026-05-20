@@ -19,7 +19,7 @@ export async function exportElementToPdf(element, filename) {
   const imageWidth = canvas.width * scale;
   const imageHeight = canvas.height * scale;
   const x = MARGIN + (contentWidth - imageWidth) / 2;
-  const y = MARGIN + (contentHeight - imageHeight) / 2;
+  const y = MARGIN;
 
   const imageData = canvas.toDataURL('image/png', 1.0);
   pdf.addImage(imageData, 'PNG', x, y, imageWidth, imageHeight);

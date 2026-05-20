@@ -81,6 +81,12 @@ function PlatformSection({ platformId, stats, salesFileNames }) {
                 <td className="amount">¥ {formatMoney(stats.warehouseFeeTotal)}</td>
               </tr>
             )}
+            {(stats.returnShippingCost || 0) > 0 && (
+              <tr>
+                <td>退货运费</td>
+                <td className="amount refund">¥ {formatMoney(stats.returnShippingCost)}</td>
+              </tr>
+            )}
             {(stats.refundTotal || 0) > 0 && (
               <tr>
                 <td>手工退款</td>
@@ -244,16 +250,16 @@ const ReportPanel = forwardRef(function ReportPanel(
                   <td>¥ {formatMoney(stats.warehouseFeeTotal || 0)}</td>
                 </tr>
                 <tr>
+                  <th>退货运费</th>
+                  <td>¥ {formatMoney(stats.returnShippingCost || 0)}</td>
                   <th>手工退款</th>
                   <td>¥ {formatMoney(stats.refundTotal || 0)}</td>
-                  <th>无效订单</th>
-                  <td>{stats.invalidCount} 条</td>
                 </tr>
                 <tr>
+                  <th>无效订单</th>
+                  <td>{stats.invalidCount} 条</td>
                   <th>待入账订单</th>
                   <td>{stats.pendingCount} 条</td>
-                  <th></th>
-                  <td></td>
                 </tr>
               </tbody>
             </table>
