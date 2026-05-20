@@ -1,7 +1,7 @@
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
 
-const MARGIN = 10; // mm
+const MARGIN = 8; // mm
 
 export async function exportElementToPdf(element, filename) {
   if (!element) return;
@@ -9,27 +9,20 @@ export async function exportElementToPdf(element, filename) {
   const canvas = await renderReportCanvas(element);
   if (!canvas) return;
 
-  const pdf = new jsPDF('l', 'mm', 'a4');
+  const pdf = new jsPDF('p', 'mm', 'a4');
   const pageWidth = pdf.internal.pageSize.getWidth();
   const pageHeight = pdf.internal.pageSize.getHeight();
   const contentWidth = pageWidth - MARGIN * 2;
   const contentHeight = pageHeight - MARGIN * 2;
-  const imageWidth = contentWidth;
-  const imageHeight = (canvas.height * imageWidth) / canvas.width;
-  const imageData = canvas.toDataURL('image/png');
 
-  let remainingHeight = imageHeight;
-  let position = MARGIN;
+  const scale = Math.min(contentWidth / canvas.width, contentHeight / canvas.height);
+  const imageWidth = canvas.width * scale;
+  const imageHeight = canvas.height * scale;
+  const x = MARGIN + (contentWidth - imageWidth) / 2;
+  const y = MARGIN + (contentHeight - imageHeight) / 2;
 
-  pdf.addImage(imageData, 'PNG', MARGIN, position, imageWidth, imageHeight);
-  remainingHeight -= contentHeight;
-
-  while (remainingHeight > 0) {
-    position -= contentHeight;
-    pdf.addPage();
-    pdf.addImage(imageData, 'PNG', MARGIN, position, imageWidth, imageHeight);
-    remainingHeight -= contentHeight;
-  }
+  const imageData = canvas.toDataURL('image/png', 1.0);
+  pdf.addImage(imageData, 'PNG', x, y, imageWidth, imageHeight);
 
   pdf.save(filename);
 }
@@ -59,6 +52,7 @@ async function renderReportCanvas(element) {
   return html2canvas(element, {
     backgroundColor: '#ffffff',
     scale: 2,
-    useCORS: true
+    useCORS: true,
+    logging: false
   });
 }

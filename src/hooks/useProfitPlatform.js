@@ -80,8 +80,6 @@ export function useProfitPlatform() {
 
   useEffect(() => {
     const salesColumns = currentPlatformData.salesRows[0] ? Object.keys(currentPlatformData.salesRows[0]) : [];
-    const purchaseColumns = purchaseRows[0] ? Object.keys(purchaseRows[0]) : [];
-
     if (salesColumns.length) {
       const newMapping = buildSalesMapping(salesColumns, activePlatformId);
       setPlatformData((prev) => ({
@@ -92,10 +90,14 @@ export function useProfitPlatform() {
         }
       }));
     }
+  }, [activePlatformId, currentPlatformData.salesRows]);
+
+  useEffect(() => {
+    const purchaseColumns = purchaseRows[0] ? Object.keys(purchaseRows[0]) : [];
     if (purchaseColumns.length) {
-      setPurchaseMapping(buildPurchaseMapping(purchaseColumns, activePlatformId));
+      setPurchaseMapping(buildPurchaseMapping(purchaseColumns, DEFAULT_PLATFORM_ID));
     }
-  }, [activePlatformId, currentPlatformData.salesRows, purchaseRows]);
+  }, [purchaseRows]);
 
   // Persist state to localStorage on every change.
   useEffect(() => {
