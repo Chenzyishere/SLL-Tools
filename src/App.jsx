@@ -33,7 +33,8 @@ export default function App() {
     handlePurchaseUpload,
     stats,
     combinedStats,
-    platformData
+    platformData,
+    clearData
   } = useProfitPlatform();
 
   const [isExporting, setIsExporting] = useState(false);
@@ -76,7 +77,11 @@ export default function App() {
       <main className="app">
         <header>
           <h1>月利润数据平台</h1>
-          <p>支持拼多多/得物双平台 · 上传订单文件和进货表后自动计算利润</p>
+          <p>支持拼多多/得物双平台 · 上传订单文件和进货表后自动计算利润
+            <button type="button" className="clear-data-btn" onClick={() => { if (confirm('确定清除所有数据？')) clearData(); }}>
+              清除数据
+            </button>
+          </p>
         </header>
 
         <PlatformTabs platformId={platformId} onChange={setPlatformId} />

@@ -3,6 +3,7 @@ import { buildPurchaseMapping, buildSalesMapping } from '../constants/mappingBui
 import { DEFAULT_PLATFORM_ID, getPlatformCostDefaults, PLATFORM_PRESETS } from '../constants/platformPresets';
 import { parseFile } from '../utils/fileParser';
 import { calcProfitByPurchasePrice } from '../utils/profitCalculator';
+import { clearPersistedState, loadPersistedState, savePersistedState } from '../utils/storage';
 import { getDefaultMonth } from '../utils/valueUtils';
 
 const EMPTY_SALES_MAPPING = {
@@ -33,14 +34,33 @@ function createPlatformData(platformId) {
 }
 
 export function useProfitPlatform() {
-  const [activePlatformId, setActivePlatformId] = useState(DEFAULT_PLATFORM_ID);
-  const [month, setMonth] = useState(getDefaultMonth());
-  const [purchaseRows, setPurchaseRows] = useState([]);
-  const [purchaseFileNames, setPurchaseFileNames] = useState([]);
-  const [purchaseMapping, setPurchaseMapping] = useState(EMPTY_PURCHASE_MAPPING);
-  const [platformData, setPlatformData] = useState({
-    pinduoduo: createPlatformData('pinduoduo'),
-    dewu: createPlatformData('dewu')
+  const [activePlatformId, setActivePlatformId] = useState(() => {
+    const saved = loadPersistedState();
+    return saved?.activePlatformId || DEFAULT_PLATFORM_ID;
+  });
+  const [month, setMonth] = useState(() => {
+    const saved = loadPersistedState();
+    return saved?.month || getDefaultMonth();
+  });
+  const [purchaseRows, setPurchaseRows] = useState(() => {
+    const saved = loadPersistedState();
+    return saved?.purchaseRows || [];
+  });
+  const [purchaseFileNames, setPurchaseFileNames] = useState(() => {
+    const saved = loadPersistedState();
+    return saved?.purchaseFileNames || [];
+  });
+  const [purchaseMapping, setPurchaseMapping] = useState(() => {
+    const saved = loadPersistedState();
+    return saved?.purchaseMapping || EMPTY_PURCHASE_MAPPING;
+  });
+  const [platformData, setPlatformData] = useState(() => {
+    const saved = loadPersistedState();
+    if (saved?.platformData) return saved.platformData;
+    return {
+      pinduoduo: createPlatformData('pinduoduo'),
+      dewu: createPlatformData('dewu')
+    };
   });
   const [error, setError] = useState('');
 
@@ -60,8 +80,6 @@ export function useProfitPlatform() {
 
   useEffect(() => {
     const salesColumns = currentPlatformData.salesRows[0] ? Object.keys(currentPlatformData.salesRows[0]) : [];
-    const purchaseColumns = purchaseRows[0] ? Object.keys(purchaseRows[0]) : [];
-
     if (salesColumns.length) {
       const newMapping = buildSalesMapping(salesColumns, activePlatformId);
       setPlatformData((prev) => ({
@@ -72,10 +90,39 @@ export function useProfitPlatform() {
         }
       }));
     }
+  }, [activePlatformId, currentPlatformData.salesRows]);
+
+  useEffect(() => {
+    const purchaseColumns = purchaseRows[0] ? Object.keys(purchaseRows[0]) : [];
     if (purchaseColumns.length) {
-      setPurchaseMapping(buildPurchaseMapping(purchaseColumns, activePlatformId));
+      setPurchaseMapping(buildPurchaseMapping(purchaseColumns, DEFAULT_PLATFORM_ID));
     }
-  }, [activePlatformId, currentPlatformData.salesRows, purchaseRows]);
+  }, [purchaseRows]);
+
+  // Persist state to localStorage on every change.
+  useEffect(() => {
+    savePersistedState({
+      activePlatformId,
+      month,
+      platformData,
+      purchaseRows,
+      purchaseFileNames,
+      purchaseMapping
+    });
+  }, [activePlatformId, month, platformData, purchaseRows, purchaseFileNames, purchaseMapping]);
+
+  function clearData() {
+    clearPersistedState();
+    setActivePlatformId(DEFAULT_PLATFORM_ID);
+    setMonth(getDefaultMonth());
+    setPlatformData({
+      pinduoduo: createPlatformData('pinduoduo'),
+      dewu: createPlatformData('dewu')
+    });
+    setPurchaseRows([]);
+    setPurchaseFileNames([]);
+    setPurchaseMapping(EMPTY_PURCHASE_MAPPING);
+  }
 
   async function handleSalesUpload(files) {
     try {
@@ -274,6 +321,7 @@ export function useProfitPlatform() {
     handlePurchaseUpload,
     stats: activeStats,
     combinedStats,
-    platformData
+    platformData,
+    clearData
   };
 }
