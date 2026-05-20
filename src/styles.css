@@ -1202,13 +1202,14 @@ input[type='number']:focus {
   top: 0;
   left: -10000px;
   width: 1000px;
-  padding: 36px 40px;
+  padding: 40px 48px 48px;
   background: #ffffff;
   color: #1a1f36;
   pointer-events: none;
   z-index: -1;
   font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
-  line-height: 1.5;
+  font-size: 13px;
+  line-height: 1.6;
 }
 
 .report-export * {
@@ -1225,11 +1226,12 @@ input[type='number']:focus {
   overflow-wrap: break-word;
 }
 
+/* ── Header ── */
 .report-header {
   text-align: center;
-  padding-bottom: 18px;
-  border-bottom: 2px solid #e2e8f0;
-  margin-bottom: 20px;
+  padding-bottom: 20px;
+  border-bottom: 3px double #d1d5db;
+  margin-bottom: 24px;
 }
 
 .report-title-row {
@@ -1241,39 +1243,42 @@ input[type='number']:focus {
 
 .report-header h1 {
   margin: 0;
-  font-size: 24px;
-  font-weight: 800;
-  color: #4f46e5;
+  font-size: 26px;
+  font-weight: 700;
+  color: #000;
+  background: none;
 }
 
 .combined-badge {
   display: inline-block;
-  padding: 4px 12px;
-  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-accent) 100%);
-  color: #fff;
-  font-size: 12px;
+  padding: 2px 10px;
+  border: 1px solid #4f46e5;
+  color: #4f46e5;
+  font-size: 11px;
   font-weight: 600;
-  border-radius: var(--radius-full);
+  border-radius: 20px;
+  vertical-align: middle;
 }
 
 .report-subtitle {
   margin: 10px 0 0;
-  color: #64748b;
+  color: #6b7280;
   font-size: 13px;
 }
 
+/* ── Metrics ── */
 .report-metrics-main {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 10px;
-  margin-bottom: 20px;
+  gap: 12px;
+  margin-bottom: 24px;
 }
 
 .report-metric {
-  background: #fff;
-  border: 1px solid #e2e8f0;
-  border-radius: 10px;
-  padding: 14px 12px;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 16px 14px;
   text-align: center;
 }
 
@@ -1284,99 +1289,100 @@ input[type='number']:focus {
 
 .report-metric span {
   display: block;
-  color: #64748b;
-  font-size: 11px;
+  color: #6b7280;
+  font-size: 12px;
   font-weight: 500;
 }
 
 .report-metric strong {
   display: block;
   margin-top: 6px;
-  font-size: 18px;
+  font-size: 20px;
   font-weight: 700;
-  color: #1a1f36;
+  color: #111827;
 }
 
 .report-metric.highlight strong {
   color: #4338ca;
-  font-size: 20px;
 }
 
-/* ── Report Platform Sections ── */
+/* ── Platform Sections ── */
 .platforms-container {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 12px;
-  margin-bottom: 20px;
+  gap: 16px;
+  margin-bottom: 24px;
 }
 
 .platform-section {
-  background: #fff;
-  border: 1px solid #e2e8f0;
-  border-radius: 12px;
-  padding: 16px;
+  background: #fafbfc;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 18px 20px;
 }
 
 .platform-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 12px;
+  margin-bottom: 14px;
   padding-bottom: 10px;
-  border-bottom: 1px solid #f1f5f9;
+  border-bottom: 1px solid #e5e7eb;
 }
 
 .platform-header h2 {
   margin: 0;
-  font-size: 16px;
+  font-size: 17px;
   font-weight: 700;
-  color: #1a1f36;
+  color: #1e293b;
 }
 
 .platform-badge {
-  padding: 4px 12px;
-  background: #e0f2fe;
-  color: #0369a1;
-  font-size: 12px;
+  padding: 3px 10px;
+  background: #e0e7ff;
+  color: #3730a3;
+  font-size: 11px;
   font-weight: 600;
-  border-radius: var(--radius-full);
+  border-radius: 20px;
 }
 
 .platform-summary {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 8px;
-  margin-bottom: 12px;
+  gap: 10px;
+  margin-bottom: 14px;
 }
 
 .summary-item {
   text-align: center;
-  padding: 10px;
-  background: #f8fafc;
-  border-radius: 8px;
+  padding: 12px 10px;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
 }
 
 .summary-item span {
   display: block;
   font-size: 11px;
-  color: #64748b;
+  color: #6b7280;
   margin-bottom: 4px;
 }
 
 .summary-item strong {
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 700;
-  color: #1a1f36;
+  color: #111827;
 }
 
 .summary-item.profit strong.positive {
-  color: var(--color-success);
+  color: #059669;
 }
 
 .summary-item.profit strong.negative {
-  color: var(--color-danger);
+  color: #dc2626;
 }
 
+/* ── Cost Breakdown ── */
 .cost-breakdown {
   margin-bottom: 12px;
 }
@@ -1384,125 +1390,143 @@ input[type='number']:focus {
 .breakdown-table {
   width: 100%;
   font-size: 12px;
+  border-collapse: collapse;
 }
 
 .breakdown-table td {
-  padding: 6px 0;
-  color: var(--color-text-secondary);
+  padding: 5px 0;
+  color: #374151;
+}
+
+.breakdown-table td:first-child {
+  width: 50%;
 }
 
 .breakdown-table td.amount {
   text-align: right;
   font-weight: 600;
+  font-variant-numeric: tabular-nums;
 }
 
 .breakdown-table td.amount.refund {
-  color: var(--color-danger);
+  color: #dc2626;
 }
 
+.breakdown-table .total-row td {
+  border-top: 1px solid #d1d5db;
+  padding-top: 8px;
+  margin-top: 4px;
+  font-weight: 700;
+  font-size: 13px;
+}
+
+/* ── Source / Notes ── */
 .file-source {
   padding-top: 10px;
-  border-top: 1px dashed var(--color-border);
+  border-top: 1px dashed #d1d5db;
   font-size: 12px;
 }
 
 .source-label {
-  color: var(--color-text-muted);
+  color: #6b7280;
 }
 
 .source-value {
-  color: var(--color-text-secondary);
+  color: #374151;
   font-weight: 500;
 }
 
 .note {
-  margin-top: 8px;
-  padding: 6px 10px;
-  font-size: 12px;
-  border-radius: var(--radius-sm);
+  margin-top: 6px;
+  padding: 4px 8px;
+  font-size: 11px;
+  border-radius: 4px;
   font-weight: 500;
 }
 
 .note.invalid {
-  background: var(--color-danger-bg);
-  color: var(--color-danger);
+  background: #fef2f2;
+  color: #dc2626;
 }
 
 .note.pending {
-  background: var(--color-warning-bg);
-  color: var(--color-warning);
+  background: #fef3c7;
+  color: #b45309;
 }
 
 /* ── Report Sections ── */
 .report-section {
   margin-top: 20px;
-  background: #fff;
-  border: 1px solid #e2e8f0;
-  border-radius: 12px;
-  padding: 16px;
-}
-
-.summary-section {
-  margin-top: 20px;
+  background: #fafbfc;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 18px 20px;
 }
 
 .report-section h2 {
   font-size: 15px;
   font-weight: 700;
-  color: #1a1f36;
+  color: #1e293b;
   margin: 0 0 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #e5e7eb;
 }
 
+/* ── Cost Detail Table ── */
 .report-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 11px;
+  font-size: 12px;
 }
 
 .report-table th,
 .report-table td {
-  border: 1px solid #e2e8f0;
-  padding: 6px 8px;
+  border: 1px solid #e5e7eb;
+  padding: 8px 12px;
   text-align: left;
-  word-break: break-all;
 }
 
 .report-table th {
-  background: #f8fafc;
+  background: #f3f4f6;
   font-weight: 600;
-  color: #475569;
-  font-size: 10px;
+  color: #374151;
+  width: 120px;
+}
+
+.report-table td {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  font-weight: 500;
 }
 
 /* ── Summary Table ── */
 .summary-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 12px;
+  font-size: 13px;
 }
 
 .summary-table th,
 .summary-table td {
-  border: 1px solid #e2e8f0;
-  padding: 8px 10px;
+  border: 1px solid #e5e7eb;
+  padding: 10px 14px;
   text-align: center;
-  word-break: break-all;
 }
 
 .summary-table th {
-  background: #f8fafc;
+  background: #f3f4f6;
   font-weight: 600;
-  color: #475569;
-  font-size: 11px;
+  color: #374151;
+  font-size: 12px;
 }
 
 .summary-table .positive {
-  color: var(--color-success);
+  color: #059669;
   font-weight: 700;
 }
 
 .summary-table .negative {
-  color: var(--color-danger);
+  color: #dc2626;
   font-weight: 700;
 }
 
@@ -1512,6 +1536,7 @@ input[type='number']:focus {
 
 .summary-table .total-row td {
   font-weight: 700;
+  font-size: 14px;
 }
 
 .summary-table .total-profit {
@@ -1522,35 +1547,41 @@ input[type='number']:focus {
 .order-detail-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 10px;
+  font-size: 11px;
 }
 
 .order-detail-table th,
 .order-detail-table td {
-  border: 1px solid #e2e8f0;
-  padding: 5px 6px;
+  border: 1px solid #e5e7eb;
+  padding: 6px 8px;
   text-align: center;
-  word-break: break-all;
 }
 
 .order-detail-table th {
-  background: #f8fafc;
+  background: #f3f4f6;
   font-weight: 600;
-  color: #475569;
-  font-size: 10px;
+  color: #374151;
+  font-size: 11px;
+}
+
+.order-detail-table tbody tr:nth-child(even) {
+  background: #fafbfc;
 }
 
 .order-detail-table .positive {
-  color: var(--color-success);
+  color: #059669;
+  font-weight: 600;
 }
 
 .order-detail-table .negative {
-  color: var(--color-danger);
+  color: #dc2626;
+  font-weight: 600;
 }
 
 /* ── File Info ── */
 .file-info {
   font-size: 13px;
+  color: #374151;
 }
 
 .file-row {
@@ -1559,11 +1590,11 @@ input[type='number']:focus {
 }
 
 .file-label {
-  color: var(--color-text-muted);
+  color: #6b7280;
 }
 
 .file-value {
-  color: var(--color-text-secondary);
+  color: #1e293b;
   font-weight: 500;
 }
 

@@ -27,10 +27,27 @@ function createPlatformData(platformId) {
     salesRows: [],
     salesFileNames: [],
     salesMapping: { ...EMPTY_SALES_MAPPING },
+    purchaseMapping: { ...EMPTY_PURCHASE_MAPPING },
     costSettings: { ...getPlatformCostDefaults(platformId) },
     orderRefundOverrides: {},
     orderReturnOverrides: {}
   };
+}
+
+function migrateLegacyData(saved) {
+  if (!saved?.platformData) return saved;
+  if (saved.purchaseMapping) {
+    for (const pid of Object.keys(saved.platformData)) {
+      if (!saved.platformData[pid].purchaseMapping) {
+        saved.platformData[pid] = {
+          ...saved.platformData[pid],
+          purchaseMapping: { ...saved.purchaseMapping }
+        };
+      }
+    }
+    delete saved.purchaseMapping;
+  }
+  return saved;
 }
 
 export function useProfitPlatform() {
@@ -50,12 +67,9 @@ export function useProfitPlatform() {
     const saved = loadPersistedState();
     return saved?.purchaseFileNames || [];
   });
-  const [purchaseMapping, setPurchaseMapping] = useState(() => {
-    const saved = loadPersistedState();
-    return saved?.purchaseMapping || EMPTY_PURCHASE_MAPPING;
-  });
   const [platformData, setPlatformData] = useState(() => {
     const saved = loadPersistedState();
+    if (saved) migrateLegacyData(saved);
     if (saved?.platformData) return saved.platformData;
     return {
       pinduoduo: createPlatformData('pinduoduo'),
@@ -65,6 +79,7 @@ export function useProfitPlatform() {
   const [error, setError] = useState('');
 
   const currentPlatformData = platformData[activePlatformId];
+  const purchaseMapping = currentPlatformData.purchaseMapping || EMPTY_PURCHASE_MAPPING;
 
   useEffect(() => {
     if (!currentPlatformData.costSettings) {
@@ -94,9 +109,18 @@ export function useProfitPlatform() {
 
   useEffect(() => {
     const purchaseColumns = purchaseRows[0] ? Object.keys(purchaseRows[0]) : [];
-    if (purchaseColumns.length) {
-      setPurchaseMapping(buildPurchaseMapping(purchaseColumns, DEFAULT_PLATFORM_ID));
-    }
+    if (!purchaseColumns.length) return;
+
+    setPlatformData((prev) => {
+      const next = { ...prev };
+      for (const pid of Object.keys(next)) {
+        next[pid] = {
+          ...next[pid],
+          purchaseMapping: buildPurchaseMapping(purchaseColumns, pid)
+        };
+      }
+      return next;
+    });
   }, [purchaseRows]);
 
   // Persist state to localStorage on every change.
@@ -106,10 +130,9 @@ export function useProfitPlatform() {
       month,
       platformData,
       purchaseRows,
-      purchaseFileNames,
-      purchaseMapping
+      purchaseFileNames
     });
-  }, [activePlatformId, month, platformData, purchaseRows, purchaseFileNames, purchaseMapping]);
+  }, [activePlatformId, month, platformData, purchaseRows, purchaseFileNames]);
 
   function clearData() {
     clearPersistedState();
@@ -121,7 +144,6 @@ export function useProfitPlatform() {
     });
     setPurchaseRows([]);
     setPurchaseFileNames([]);
-    setPurchaseMapping(EMPTY_PURCHASE_MAPPING);
   }
 
   async function handleSalesUpload(files) {
@@ -156,7 +178,16 @@ export function useProfitPlatform() {
 
       setPurchaseRows(rows);
       setPurchaseFileNames([file.name]);
-      setPurchaseMapping(buildPurchaseMapping(columns, activePlatformId));
+      setPlatformData((prev) => {
+        const next = { ...prev };
+        for (const pid of Object.keys(next)) {
+          next[pid] = {
+            ...next[pid],
+            purchaseMapping: buildPurchaseMapping(columns, pid)
+          };
+        }
+        return next;
+      });
     } catch (err) {
       setError(`进货表解析失败：${err.message || err}`);
     }
@@ -219,6 +250,16 @@ export function useProfitPlatform() {
     }));
   }
 
+  function setPurchaseMapping(mapping) {
+    setPlatformData((prev) => ({
+      ...prev,
+      [activePlatformId]: {
+        ...prev[activePlatformId],
+        purchaseMapping: mapping
+      }
+    }));
+  }
+
   const activeStats = useMemo(
     () =>
       calcProfitByPurchasePrice(
@@ -235,26 +276,31 @@ export function useProfitPlatform() {
   );
 
   const combinedStats = useMemo(() => {
+    const pdd = platformData.pinduoduo;
+    const dewu = platformData.dewu;
+    const pddPurchaseMapping = pdd.purchaseMapping || EMPTY_PURCHASE_MAPPING;
+    const dewuPurchaseMapping = dewu.purchaseMapping || EMPTY_PURCHASE_MAPPING;
+
     const pddStats = calcProfitByPurchasePrice(
-      platformData.pinduoduo.salesRows,
+      pdd.salesRows,
       purchaseRows,
-      platformData.pinduoduo.salesMapping,
-      purchaseMapping,
+      pdd.salesMapping,
+      pddPurchaseMapping,
       month,
-      platformData.pinduoduo.costSettings || getPlatformCostDefaults('pinduoduo'),
-      platformData.pinduoduo.orderRefundOverrides,
-      platformData.pinduoduo.orderReturnOverrides
+      pdd.costSettings || getPlatformCostDefaults('pinduoduo'),
+      pdd.orderRefundOverrides,
+      pdd.orderReturnOverrides
     );
 
     const dewuStats = calcProfitByPurchasePrice(
-      platformData.dewu.salesRows,
+      dewu.salesRows,
       purchaseRows,
-      platformData.dewu.salesMapping,
-      purchaseMapping,
+      dewu.salesMapping,
+      dewuPurchaseMapping,
       month,
-      platformData.dewu.costSettings || getPlatformCostDefaults('dewu'),
-      platformData.dewu.orderRefundOverrides,
-      platformData.dewu.orderReturnOverrides
+      dewu.costSettings || getPlatformCostDefaults('dewu'),
+      dewu.orderRefundOverrides,
+      dewu.orderReturnOverrides
     );
 
     return {
@@ -293,7 +339,7 @@ export function useProfitPlatform() {
         pendingOrderRows: [...pddStats.pendingOrderRows, ...dewuStats.pendingOrderRows]
       }
     };
-  }, [platformData, purchaseRows, purchaseMapping, month]);
+  }, [platformData, purchaseRows, month]);
 
   return {
     platformId: activePlatformId,
