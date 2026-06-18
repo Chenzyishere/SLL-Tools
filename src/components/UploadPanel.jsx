@@ -13,12 +13,13 @@ export default function UploadPanel({
 }) {
   const columns = useMemo(() => (rows[0] ? Object.keys(rows[0]) : []), [rows]);
 
+  const hasData = rows.length > 0;
+
   return (
-    <section className="panel upload-panel">
-      <div className="panel-title-row">
-        <h2>{title}</h2>
-        <label className="file-picker">
-          选择文件
+    <section className="sidebar-upload">
+      <div className="sidebar-upload-header">
+        <h4>{title}</h4>
+        <label className="sidebar-file-btn">
           <input
             type="file"
             accept=".csv,.xlsx,.xls"
@@ -28,47 +29,40 @@ export default function UploadPanel({
                 onUpload(e.target.files);
                 return;
               }
-
               const file = e.target.files?.[0];
               if (file) onUpload(file);
             }}
           />
+          {hasData ? '更换' : '上传'}
         </label>
       </div>
 
-      <div className="meta">
-        已读取 {rows.length} 行
-        {fileNames.length > 0 ? `，${fileNames.length} 个文件` : ''}
-      </div>
-
-      {fileNames.length > 0 && (
-        <div className="file-list">
-          {fileNames.map((name) => (
-            <span key={name}>{name}</span>
-          ))}
+      {hasData && (
+        <div className="sidebar-upload-meta">
+          {rows.length} 行
+          {fileNames.length > 0 ? ` · ${fileNames.join(', ')}` : ''}
         </div>
       )}
+      {!hasData && (
+        <div className="sidebar-upload-meta empty">未上传</div>
+      )}
 
-      <details className="mapping-details" open={columns.length > 0}>
+      <details className="sidebar-mapping">
         <summary>字段确认</summary>
-
         {fields.map((field) => (
-          <div className="form-row" key={field.key}>
+          <div className="sidebar-form-row" key={field.key}>
             <span>{field.label}</span>
             <select
               value={mapping[field.key] || ''}
               onChange={(e) => onMappingChange({ ...mapping, [field.key]: e.target.value })}
             >
               {columns.map((col) => (
-                <option key={col} value={col}>
-                  {col}
-                </option>
+                <option key={col} value={col}>{col}</option>
               ))}
             </select>
           </div>
         ))}
-
-        {columns.length > 0 && <div className="hint">自动识别参考：{hints}</div>}
+        {columns.length > 0 && <div className="sidebar-hint">{hints}</div>}
       </details>
     </section>
   );

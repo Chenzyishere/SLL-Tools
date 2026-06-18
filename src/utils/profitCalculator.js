@@ -73,6 +73,7 @@ function createOrderSummary(orderId, firstSeenIndex) {
     shippingCost: 0,
     experienceFee: 0,
     techServiceFee: 0,
+    platformFee: 0,
     pendingAmount: 0,
     invalidAmount: 0,
     shippingEligible: false,
@@ -108,7 +109,8 @@ function toOrderProfitRows(orderMap) {
         shippingCost: order.shippingCost,
         experienceFee: order.experienceFee,
         techServiceFee: order.techServiceFee,
-        profit: order.netRevenue - order.productCost - order.shippingCost - order.experienceFee - order.techServiceFee - (order.returnShippingFee || 0),
+        platformFee: order.platformFee || 0,
+        profit: order.netRevenue - order.productCost - order.shippingCost - order.experienceFee - order.techServiceFee - (order.returnShippingFee || 0) - (order.platformFee || 0),
         note,
         editableRefund: order.effectiveLineCount > 0,
         isReturn: order.returnShippingFee > 0,
@@ -164,6 +166,7 @@ export function calcProfitByPurchasePrice(
       shippingCost: 0,
       experienceFeeTotal: 0,
       techServiceFeeTotal: 0,
+      platformFeeTotal: 0,
       shippingOrderCount: 0,
       weightFee: 0,
       warehouseFeeTotal: 0,
@@ -258,20 +261,24 @@ export function calcProfitByPurchasePrice(
     order.effectiveLineCount += 1;
     order.grossRevenue += amount;
 
+    // Check for direct cost override (used by manual order input)
+    const directCost = toNumber(row['成本']);
+    const hasDirectCost = !Number.isNaN(directCost) && directCost >= 0;
+
     const rawSku = row[salesMapping.skuColumn];
-    const sku = normalizeKey(rawSku);
-    const skuLabel = String(rawSku ?? '').trim() || '(空编码)';
+    const sku = hasDirectCost ? String(row[salesMapping.orderIdColumn] || rawSku || '').trim() : normalizeKey(rawSku);
+    const skuLabel = hasDirectCost ? (String(row['商品名称'] || '').trim() || sku || '(手动订单)') : (String(rawSku ?? '').trim() || '(空编码)');
 
     let qty = toNumber(row[salesMapping.qtyColumn]);
     if (Number.isNaN(qty) || qty <= 0) qty = 1;
 
     const name = pickProductName(row);
-    const purchasePrice = purchaseMap.get(sku);
+    const purchasePrice = hasDirectCost ? directCost : purchaseMap.get(sku);
 
     if (statusInfo.shippingEligible) order.shippingEligible = true;
     if (statusInfo.receivedEligible) order.receivedEligible = true;
 
-    if (!sku || purchasePrice === undefined || Number.isNaN(purchasePrice)) {
+    if (!hasDirectCost && (!sku || purchasePrice === undefined || Number.isNaN(purchasePrice))) {
       unmatchedCount += 1;
       const unmatchedKey = sku || `__empty__${name || 'unknown'}`;
 
@@ -296,6 +303,12 @@ export function calcProfitByPurchasePrice(
     const lineCost = purchasePrice * qty;
     productCost += lineCost;
     order.productCost += lineCost;
+
+    // Accumulate per-order platform fee (used by manual order input)
+    const rowPlatformFee = toNumber(row['平台扣费']);
+    if (!Number.isNaN(rowPlatformFee) && rowPlatformFee > 0) {
+      order.platformFee += rowPlatformFee;
+    }
 
     if (!matchedMap.has(sku)) {
       matchedMap.set(sku, {
@@ -322,6 +335,7 @@ export function calcProfitByPurchasePrice(
   let orderRefundEditedCount = 0;
   let experienceFeeTotal = 0;
   let techServiceFeeTotal = 0;
+  let platformFeeTotal = 0;
 
   for (const order of orderMap.values()) {
     if (order.effectiveLineCount > 0 && order.shippingEligible) {
@@ -346,6 +360,8 @@ export function calcProfitByPurchasePrice(
         experienceFeeTotal += order.experienceFee;
         techServiceFeeTotal += order.techServiceFee;
       }
+
+      platformFeeTotal += order.platformFee || 0;
     } else {
       order.netRevenue = 0;
       order.refundAmount = 0;
@@ -383,7 +399,7 @@ export function calcProfitByPurchasePrice(
   }
 
   const warehouseFeeTotal = inboundWarehouseShippingFee + outboundWarehouseShippingFee;
-  const cost = productCost + shippingCost + experienceFeeTotal + techServiceFeeTotal + weightFee + warehouseFeeTotal + returnShippingCost;
+  const cost = productCost + shippingCost + experienceFeeTotal + techServiceFeeTotal + weightFee + warehouseFeeTotal + returnShippingCost + platformFeeTotal;
 
   return {
     revenue,
@@ -394,6 +410,7 @@ export function calcProfitByPurchasePrice(
     shippingCost,
     experienceFeeTotal,
     techServiceFeeTotal,
+    platformFeeTotal,
     shippingOrderCount,
     weightFee,
     warehouseFeeTotal,

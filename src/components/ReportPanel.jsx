@@ -69,6 +69,12 @@ function PlatformSection({ platformId, stats, salesFileNames }) {
                 <td className="amount">¥ {formatMoney(stats.techServiceFeeTotal)}</td>
               </tr>
             )}
+            {(stats.platformFeeTotal || 0) > 0 && (
+              <tr>
+                <td>平台扣费</td>
+                <td className="amount">¥ {formatMoney(stats.platformFeeTotal)}</td>
+              </tr>
+            )}
             {stats.weightFee > 0 && (
               <tr>
                 <td>月增重费</td>
@@ -104,6 +110,13 @@ function PlatformSection({ platformId, stats, salesFileNames }) {
         </div>
       )}
 
+      {(!salesFileNames || salesFileNames.length === 0) && stats.salesCount > 0 && (
+        <div className="file-source">
+          <span className="source-label">来源：</span>
+          <span className="source-value">手动录入</span>
+        </div>
+      )}
+
       {stats.invalidCount > 0 && (
         <div className="note invalid">无效订单：{stats.invalidCount} 条</div>
       )}
@@ -129,7 +142,7 @@ const ReportPanel = forwardRef(function ReportPanel(
             {exportMode === 'combined' ? '双平台合并月利润报表' : `${platformName}月利润报表`}
           </h1>
           {exportMode === 'combined' && (
-            <span className="combined-badge">拼多多 + 得物</span>
+            <span className="combined-badge">拼多多 + 得物 + 手动输入</span>
           )}
         </div>
         <p className="report-subtitle">
@@ -164,6 +177,11 @@ const ReportPanel = forwardRef(function ReportPanel(
               stats={combinedStats.dewu}
               salesFileNames={platformData?.dewu?.salesFileNames}
             />
+            <PlatformSection
+              platformId="manual"
+              stats={combinedStats.manual}
+              salesFileNames={platformData?.manual?.salesFileNames}
+            />
           </div>
 
           <section className="report-section summary-section">
@@ -195,6 +213,15 @@ const ReportPanel = forwardRef(function ReportPanel(
                   <td>¥ {formatMoney(combinedStats.dewu.cost)}</td>
                   <td className={combinedStats.dewu.profit >= 0 ? 'positive' : 'negative'}>
                     ¥ {formatMoney(combinedStats.dewu.profit)}
+                  </td>
+                </tr>
+                <tr>
+                  <td>手动输入</td>
+                  <td>{combinedStats.manual.salesCount}</td>
+                  <td>¥ {formatMoney(combinedStats.manual.revenue)}</td>
+                  <td>¥ {formatMoney(combinedStats.manual.cost)}</td>
+                  <td className={combinedStats.manual.profit >= 0 ? 'positive' : 'negative'}>
+                    ¥ {formatMoney(combinedStats.manual.profit)}
                   </td>
                 </tr>
                 <tr className="total-row">
@@ -244,18 +271,20 @@ const ReportPanel = forwardRef(function ReportPanel(
                   <td>¥ {formatMoney(stats.techServiceFeeTotal || 0)}</td>
                 </tr>
                 <tr>
+                  <th>平台扣费</th>
+                  <td>¥ {formatMoney(stats.platformFeeTotal || 0)}</td>
                   <th>月增重费</th>
                   <td>¥ {formatMoney(stats.weightFee)}</td>
+                </tr>
+                <tr>
                   <th>仓运费</th>
                   <td>¥ {formatMoney(stats.warehouseFeeTotal || 0)}</td>
-                </tr>
-                <tr>
                   <th>退货运费</th>
                   <td>¥ {formatMoney(stats.returnShippingCost || 0)}</td>
-                  <th>手工退款</th>
-                  <td>¥ {formatMoney(stats.refundTotal || 0)}</td>
                 </tr>
                 <tr>
+                  <th>手工退款</th>
+                  <td>¥ {formatMoney(stats.refundTotal || 0)}</td>
                   <th>无效订单</th>
                   <td>{stats.invalidCount} 条</td>
                   <th>待入账订单</th>
