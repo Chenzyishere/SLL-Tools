@@ -32,6 +32,7 @@ export default function StatsPanel({ stats }) {
           <div>运费：¥ {formatMoney(stats.shippingCost)}</div>
           <div>体验提升费：¥ {formatMoney(stats.experienceFeeTotal || 0)}</div>
           <div>技术服务费：¥ {formatMoney(stats.techServiceFeeTotal || 0)}</div>
+          <div>平台扣费：¥ {formatMoney(stats.platformFeeTotal || 0)}</div>
           <div>月增重费：¥ {formatMoney(stats.weightFee)}</div>
           <div>仓运费：¥ {formatMoney(stats.warehouseFeeTotal || 0)}</div>
         </CollapsibleNote>

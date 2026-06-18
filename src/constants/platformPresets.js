@@ -50,6 +50,32 @@ export const PLATFORM_PRESETS = {
       skuColumn: ['货号', 'SKU货号', '商品编码', '商品', '商品名称'],
       priceColumn: ['进货价']
     }
+  },
+  manual: {
+    id: 'manual',
+    name: '手动输入',
+    description: '手动录入订单数据',
+    costDefaults: {
+      baseShippingFee: 0,
+      monthlyWeightFee: 0,
+      consumerExperienceFee: 0,
+      techServiceRate: 0,
+      inboundWarehouseShippingFee: 0,
+      outboundWarehouseShippingFee: 0
+    },
+    warehouseFeesEnabled: false,
+    sales: {
+      dateColumn: ['日期'],
+      amountColumn: ['金额'],
+      qtyColumn: ['数量'],
+      skuColumn: [],
+      statusColumn: ['状态'],
+      orderIdColumn: []
+    },
+    purchase: {
+      skuColumn: ['货号', 'SKU货号', '商品编码', '商品', '商品名称'],
+      priceColumn: ['进货价']
+    }
   }
 };
 
