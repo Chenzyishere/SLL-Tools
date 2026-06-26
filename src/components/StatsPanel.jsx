@@ -1,5 +1,6 @@
 ﻿﻿import { useState } from 'react';
 import { formatMoney } from '../utils/format';
+import { IconCaret } from './Icons';
 
 function CollapsibleNote({ children }) {
   const [isExpanded, setIsExpanded] = useState(false);
@@ -7,7 +8,7 @@ function CollapsibleNote({ children }) {
   return (
     <div className="collapsible-note">
       <button type="button" onClick={() => setIsExpanded(!isExpanded)} className="expand-btn">
-        <span className="expand-icon">{isExpanded ? '▼' : '▶'}</span>
+        <span className="expand-icon"><IconCaret open={isExpanded} size={10} /></span>
         {isExpanded ? '收起明细' : '查看明细'}
       </button>
       {isExpanded && <div className="note-content">{children}</div>}

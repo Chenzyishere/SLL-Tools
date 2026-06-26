@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import JSZip from 'jszip';
 import CropModal from './CropModal';
+import { IconCrop, IconEmpty, IconTag, IconUpload, IconX } from './Icons';
 
 const POSITIONS = ['左上', '右上', '居中', '左下', '右下', '平铺'];
 
@@ -263,7 +264,7 @@ export default function WatermarkTool() {
               style={{ display: 'none' }}
               onChange={(e) => handleImageUpload(e.target.files)}
             />
-            <span className="watermark-upload-icon">📷</span>
+            <span className="watermark-upload-icon"><IconUpload size={16} /></span>
             <span>{hasImages ? `已选 ${images.length} 张` : '点击或拖拽上传图片（可多选）'}</span>
           </label>
 
@@ -277,8 +278,8 @@ export default function WatermarkTool() {
                 >
                   <img src={item.url} alt={item.file.name} />
                   <div className="watermark-thumb-actions">
-                    <button className="watermark-thumb-crop" onClick={(e) => { e.stopPropagation(); handleCropImage(i); }}>✂</button>
-                    <button className="watermark-thumb-remove" onClick={(e) => { e.stopPropagation(); removeImage(i); }}>×</button>
+                    <button className="watermark-thumb-crop" onClick={(e) => { e.stopPropagation(); handleCropImage(i); }}><IconCrop size={12} /></button>
+                    <button className="watermark-thumb-remove" onClick={(e) => { e.stopPropagation(); removeImage(i); }}><IconX size={12} /></button>
                   </div>
                 </div>
               ))}
@@ -295,7 +296,7 @@ export default function WatermarkTool() {
               style={{ display: 'none' }}
               onChange={(e) => handleWatermarkUpload(e.target.files?.[0])}
             />
-            <span className="watermark-upload-icon">🏷️</span>
+            <span className="watermark-upload-icon"><IconTag size={16} /></span>
             <span>{watermarkFile ? watermarkFile.name : '点击上传水印图（单张）'}</span>
           </label>
           {watermarkFile && (
@@ -370,7 +371,7 @@ export default function WatermarkTool() {
           </div>
         ) : (
           <div className="watermark-preview-empty">
-            <span className="watermark-upload-icon">🖼️</span>
+            <span className="watermark-upload-icon"><IconEmpty size={36} /></span>
             <p>上传原图和水印图后<br/>在此处预览效果</p>
           </div>
         )}
